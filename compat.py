@@ -1,79 +1,78 @@
-"""Stuff that differs in different Python versions and platform
-distributions."""
+"""
+requests.compat
+~~~~~~~~~~~~~~~
 
-import importlib.resources
-import logging
-import os
+This module previously handled import compatibility issues
+between Python 2 and Python 3. It remains for backwards
+compatibility until the next major version.
+"""
+
 import sys
-from typing import IO
 
-__all__ = ["get_path_uid", "stdlib_pkgs", "WINDOWS"]
-
-
-logger = logging.getLogger(__name__)
+# -------------------
+# Character Detection
+# -------------------
 
 
-def has_tls() -> bool:
-    try:
-        import _ssl  # noqa: F401  # ignore unused
-
-        return True
-    except ImportError:
-        pass
-
-    from pip._vendor.urllib3.util import IS_PYOPENSSL
-
-    return IS_PYOPENSSL
+def _resolve_char_detection():
+    """Find supported character detection libraries."""
+    chardet = None
+    return chardet
 
 
-def get_path_uid(path: str) -> int:
-    """
-    Return path's uid.
+chardet = _resolve_char_detection()
 
-    Does not follow symlinks:
-        https://github.com/pypa/pip/pull/935#discussion_r5307003
+# -------
+# Pythons
+# -------
 
-    Placed this function in compat due to differences on AIX and
-    Jython, that should eventually go away.
+# Syntax sugar.
+_ver = sys.version_info
 
-    :raises OSError: When path is a symlink or can't be read.
-    """
-    if hasattr(os, "O_NOFOLLOW"):
-        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
-        file_uid = os.fstat(fd).st_uid
-        os.close(fd)
-    else:  # AIX and Jython
-        # WARNING: time of check vulnerability, but best we can do w/o NOFOLLOW
-        if not os.path.islink(path):
-            # older versions of Jython don't have `os.fstat`
-            file_uid = os.stat(path).st_uid
-        else:
-            # raise OSError for parity with os.O_NOFOLLOW above
-            raise OSError(f"{path} is a symlink; Will not return uid for symlinks")
-    return file_uid
+#: Python 2.x?
+is_py2 = _ver[0] == 2
 
+#: Python 3.x?
+is_py3 = _ver[0] == 3
 
-# The importlib.resources.open_text function was deprecated in 3.11 with suggested
-# replacement we use below.
-if sys.version_info < (3, 11):
-    open_text_resource = importlib.resources.open_text
-else:
+# Note: We've patched out simplejson support in pip because it prevents
+#       upgrading simplejson on Windows.
+import json
+from json import JSONDecodeError
 
-    def open_text_resource(
-        package: str, resource: str, encoding: str = "utf-8", errors: str = "strict"
-    ) -> IO[str]:
-        return (importlib.resources.files(package) / resource).open(
-            "r", encoding=encoding, errors=errors
-        )
+# Keep OrderedDict for backwards compatibility.
+from collections import OrderedDict
+from collections.abc import Callable, Mapping, MutableMapping
+from http import cookiejar as cookielib
+from http.cookies import Morsel
+from io import StringIO
 
+# --------------
+# Legacy Imports
+# --------------
+from urllib.parse import (
+    quote,
+    quote_plus,
+    unquote,
+    unquote_plus,
+    urldefrag,
+    urlencode,
+    urljoin,
+    urlparse,
+    urlsplit,
+    urlunparse,
+)
+from urllib.request import (
+    getproxies,
+    getproxies_environment,
+    parse_http_list,
+    proxy_bypass,
+    proxy_bypass_environment,
+)
 
-# packages in the stdlib that may have installation metadata, but should not be
-# considered 'installed'.  this theoretically could be determined based on
-# dist.location (py27:`sysconfig.get_paths()['stdlib']`,
-# py26:sysconfig.get_config_vars('LIBDEST')), but fear platform variation may
-# make this ineffective, so hard-coding
-stdlib_pkgs = {"python", "wsgiref", "argparse"}
-
-
-# windows detection, covers cpython and ironpython
-WINDOWS = sys.platform.startswith("win") or (sys.platform == "cli" and os.name == "nt")
+builtin_str = str
+str = str
+bytes = bytes
+basestring = (str, bytes)
+numeric_types = (int, float)
+integer_types = (int,)
