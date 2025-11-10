@@ -1,8 +1,13 @@
-# SPDX-FileCopyrightText: 2015 Eric Larson
-#
-# SPDX-License-Identifier: Apache-2.0
+from typing import List, Optional
 
-from pip._vendor.cachecontrol.caches.file_cache import FileCache, SeparateBodyFileCache
-from pip._vendor.cachecontrol.caches.redis_cache import RedisCache
+__version__ = "25.0"
 
-__all__ = ["FileCache", "SeparateBodyFileCache", "RedisCache"]
+
+def main(args: Optional[List[str]] = None) -> int:
+    """This is an internal API only meant for use by pip's own console scripts.
+
+    For additional details, see https://github.com/pypa/pip/issues/7498.
+    """
+    from pip._internal.utils.entrypoints import _wrapper
+
+    return _wrapper(args)
